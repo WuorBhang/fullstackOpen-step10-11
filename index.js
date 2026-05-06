@@ -1,18 +1,18 @@
 const express = require("express");
 const morgan = require("morgan");
-const app = express();
 const cors = require("cors");
+const path = require("path");
 
-// Use environment PORT for deployment (Render)
-const PORT = process.env.PORT;
+const app = express();
 
+// Use Render/production PORT or fallback to 3000
+const PORT = process.env.PORT || 3000;
+
+// Middleware
 app.use(cors());
-
-// Serve static files from the 'dist' directory (frontend)
-app.use(express.static("dist"));
-
 app.use(express.json());
 
+// Morgan logging (with request body)
 morgan.token("body", (req) => {
   if (req.method === "POST") {
     return JSON.stringify(req.body);
@@ -24,6 +24,10 @@ app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :body"),
 );
 
+// static frontend build
+app.use(express.static("dist"));
+
+// In-memory data
 let persons = [
   {
     id: "1",
@@ -47,6 +51,7 @@ let persons = [
   },
 ];
 
+// Routes
 app.get("/api/persons", (req, res) => {
   res.json(persons);
 });
@@ -68,40 +73,55 @@ app.get("/api/persons/:id", (req, res) => {
 
 app.delete("/api/persons/:id", (req, res) => {
   const id = req.params.id;
-  const personExists = persons.some((p) => p.id === id);
-  if (!personExists) {
+  const exists = persons.some((p) => p.id === id);
+
+  if (!exists) {
     return res.status(404).json({ error: "Person not found" });
   }
+
   persons = persons.filter((p) => p.id !== id);
   res.status(204).end();
 });
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
+
   if (!body.name || !body.number) {
     return res.status(400).json({ error: "Name and number are required" });
   }
+
   const nameExists = persons.some(
     (p) => p.name.toLowerCase() === body.name.toLowerCase(),
   );
+
   if (nameExists) {
     return res.status(400).json({ error: "Name must be unique" });
   }
-  const newId = String(Math.floor(Math.random() * 1000000));
+
   const newPerson = {
-    id: newId,
+    id: String(Math.floor(Math.random() * 1000000)),
     name: body.name,
     number: body.number,
   };
+
   persons = persons.concat(newPerson);
   res.status(201).json(newPerson);
 });
 
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "unknown endpoint" });
+// Unknown endpoint handler (API errors only)
+const unknownEndpoint = (req, res) => {
+  res.status(404).json({ error: "unknown endpoint" });
 };
-app.use(unknownEndpoint);
 
+// 🔥 IMPORTANT ORDER
+app.use("/api", unknownEndpoint);
+
+// 🔥 React fallback (MUST BE LAST)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
+
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
