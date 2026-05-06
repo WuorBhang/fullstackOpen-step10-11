@@ -5,14 +5,11 @@ const path = require("path");
 
 const app = express();
 
-// Use Render/production PORT or fallback to 3000
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Morgan logging (with request body)
 morgan.token("body", (req) => {
   if (req.method === "POST") {
     return JSON.stringify(req.body);
@@ -27,7 +24,6 @@ app.use(
 // static frontend build
 app.use(express.static("dist"));
 
-// In-memory data
 let persons = [
   {
     id: "1",
@@ -108,20 +104,16 @@ app.post("/api/persons", (req, res) => {
   res.status(201).json(newPerson);
 });
 
-// Unknown endpoint handler (API errors only)
 const unknownEndpoint = (req, res) => {
   res.status(404).json({ error: "unknown endpoint" });
 };
 
-// 🔥 IMPORTANT ORDER
 app.use("/api", unknownEndpoint);
 
-// 🔥 React fallback (MUST BE LAST)
-app.get("*", (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
