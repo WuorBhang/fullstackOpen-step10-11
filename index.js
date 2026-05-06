@@ -8,6 +8,9 @@ const PORT = process.env.PORT;
 
 app.use(cors());
 
+// Serve static files from the 'dist' directory (frontend)
+app.use(express.static("dist"));
+
 app.use(express.json());
 
 morgan.token("body", (req) => {
