@@ -2,15 +2,13 @@ const express = require("express");
 const morgan = require("morgan");
 const app = express();
 const cors = require("cors");
+require("dotenv").config();
 
-// Use environment PORT for deployment (Render)
+// Use environment PORT for deployment, default to 3001 for local development
 const PORT = process.env.PORT;
 
 app.use(cors());
-
-// Serve static files from the 'dist' directory (frontend)
-app.use(express.static("dist"));
-
+app.use(express.static("dist")); // serves production frontend build
 app.use(express.json());
 
 morgan.token("body", (req) => {
@@ -47,6 +45,7 @@ let persons = [
   },
 ];
 
+// Routes
 app.get("/api/persons", (req, res) => {
   res.json(persons);
 });
