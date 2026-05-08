@@ -1,14 +1,13 @@
 const express = require("express");
 const morgan = require("morgan");
-const app = express();
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
 
-// Use environment PORT for deployment, default to 3001 for local development
-const PORT = process.env.PORT;
+const app = express();
+
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.static("dist")); // serves production frontend build
 app.use(express.json());
 
 morgan.token("body", (req) => {
@@ -21,6 +20,9 @@ morgan.token("body", (req) => {
 app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :body"),
 );
+
+// static frontend build
+app.use(express.static("dist"));
 
 let persons = [
   {
@@ -67,39 +69,50 @@ app.get("/api/persons/:id", (req, res) => {
 
 app.delete("/api/persons/:id", (req, res) => {
   const id = req.params.id;
-  const personExists = persons.some((p) => p.id === id);
-  if (!personExists) {
+  const exists = persons.some((p) => p.id === id);
+
+  if (!exists) {
     return res.status(404).json({ error: "Person not found" });
   }
+
   persons = persons.filter((p) => p.id !== id);
   res.status(204).end();
 });
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
+
   if (!body.name || !body.number) {
     return res.status(400).json({ error: "Name and number are required" });
   }
+
   const nameExists = persons.some(
     (p) => p.name.toLowerCase() === body.name.toLowerCase(),
   );
+
   if (nameExists) {
     return res.status(400).json({ error: "Name must be unique" });
   }
-  const newId = String(Math.floor(Math.random() * 1000000));
+
   const newPerson = {
-    id: newId,
+    id: String(Math.floor(Math.random() * 1000000)),
     name: body.name,
     number: body.number,
   };
+
   persons = persons.concat(newPerson);
   res.status(201).json(newPerson);
 });
 
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "unknown endpoint" });
+const unknownEndpoint = (req, res) => {
+  res.status(404).json({ error: "unknown endpoint" });
 };
-app.use(unknownEndpoint);
+
+app.use("/api", unknownEndpoint);
+
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
